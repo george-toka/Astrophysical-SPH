@@ -100,6 +100,8 @@ def main():
     """ SPH simulation """
 
     # Simulation parameters with units
+        #gia n = 1.4, k=1e-3
+
     solar_mass = 1.989e30  # kg
     km = 1e3  # m
     M0 = solar_mass  # characteristic mass
@@ -107,14 +109,14 @@ def main():
 
     N = 400  # Number of particles
     t = 0  # current time of the simulation
-    tEnd = 100 #* 3600  # time at which simulation ends (12 hours in seconds)
-    dt = 0.0000005  # timestep in seconds
+    tEnd = 5  # time at which simulation ends
+    dt = 0.001  # timestep in seconds
     M = 2 * M0  # star mass (2 solar masses)
-    R = 11 * L0  # star radius (0.75 km)
-    h = 2 * L0  # smoothing length (0.1 km)
-    k = 0.01 # equation of state constant (kg/(m·s^2))
-    n = 1  # polytropic index
-    nu = 2e4  # damping (1/s)
+    R = 11 * L0  # star radius (11 km)
+    h = 2 * L0  # smoothing length (2 km)
+    k = 1e-7 # equation of state constant (kg/(m·s^2))
+    n = 1 # polytropic index
+    nu = 20  # damping (1/s)
     plotRealTime = True  # switch on for plotting as the simulation goes along
 
     # Generate Initial Conditions
@@ -139,7 +141,7 @@ def main():
     rr = np.zeros((100, 3))
     rlin = np.linspace(0, R, 100)
     rr[:, 0] = rlin
-    rho_analytic = ((lmbda / (2*k*(1+n)) * (R**2 - rlin**2)) ** n ) / 1e14
+    rho_analytic = ((lmbda / (2*k*(1+n)) * (R**2 - rlin**2)) ** n ) / 1e14 #scaling for plotting purposes
 
     # Simulation Main Loop
     for i in range(Nt):
@@ -161,7 +163,9 @@ def main():
         # get density for plotting
         rho = getDensity(pos, pos, m, h)
 
-        print(vel)
+        #to determine timestep
+        print(str(vel.max()))
+
         # plot in real time
         if plotRealTime or (i == Nt-1):
             plt.sca(ax1)
@@ -180,7 +184,7 @@ def main():
             ax2.set(xlim=(0, R), ylim=(0, np.max(rho_analytic)))
             ax2.set_aspect(0.1)
             plt.plot(rlin, rho_analytic, color='gray', linewidth=2)
-            rho_radial = getDensity(rr, pos, m, h) / 1e14
+            rho_radial = getDensity(rr, pos, m, h) / 1e14 #scaling with the same factor for plotting purposes
             plt.plot(rlin, rho_radial, color='blue')
             plt.pause(0.001)
 
@@ -194,7 +198,9 @@ def main():
     plt.show()
 
     print(rho_analytic)
+
     return 0
 
 if __name__ == "__main__":
     main()
+
