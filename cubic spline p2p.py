@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 from scipy.special import gamma
 import time
 
-def W(x, y, z, h):
+#strwse sto acc ta shapes 
+
+def WgradW(x, y, z, h):
     """
     Gaussian Smoothing kernel (3D)
     x, y, z: vectors/matrices of positions
@@ -11,22 +13,31 @@ def W(x, y, z, h):
     w: evaluated smoothing function
     """
     r = np.sqrt(x**2 + y**2 + z**2)
-    w = (1.0 / (h * np.sqrt(np.pi)))**3 * np.exp(-r**2 / h**2)
-    return w
+    w = np.zeros(r.shape)
+    gradWx = np.zeros(r.shape)
+    gradWy = np.zeros(r.shape)
+    gradWz = np.zeros(r.shape)
 
-def gradW(x, y, z, h):
-    """
-    Gradient of the Gaussian Smoothing kernel (3D)
-    x, y, z: vectors/matrices of positions
-    h: smoothing length
-    wx, wy, wz: evaluated gradient
-    """
-    r = np.sqrt(x**2 + y**2 + z**2)
-    n = -2 * np.exp(-r**2 / h**2) / h**5 / (np.pi)**(3/2)
-    wx = n * x
-    wy = n * y
-    wz = n * z
-    return wx, wy, wz
+    q = r / h
+    ct = 1 / (np.pi*h**3)
+
+    mask1 = q <= 1
+    mask2 = (q <= 2) & (q > 1)
+
+    w[mask1] = ct * (1 - 3/2 * q[mask1]**2 + 3/4 * q[mask1]**3)
+    n = ct / h * (9/4 * r[mask1] / h**2 - 3 / h)
+    gradWx[mask1] = n * x[mask1]
+    gradWy[mask1] = n * y[mask1]
+    gradWz[mask1] = n * z[mask1]
+
+    w[mask2] = ct * 1/4 * (2 - q[mask2])**3
+    n = ct / h * (-3/4 * (4 / r[mask2] - 4 / h + r[mask2] / h**2))
+    gradWx[mask2] = n * x[mask2]
+    gradWy[mask2] = n * y[mask2]
+    gradWz[mask2] = n * z[mask2]
+
+    return w, gradWx, gradWy, gradWz
+
 
 def getPairwiseSeparations(ri, rj):
     """
@@ -58,7 +69,7 @@ def getDensity(r, pos, m, h):
     rho: M x 1 vector of densities
     """
     dx, dy, dz = getPairwiseSeparations(r, pos)
-    rho = np.sum(m * W(dx, dy, dz, h), 1).reshape((-1, 1))
+    rho = np.sum(m * WgradW(dx, dy, dz, h)[0], 1).reshape((-1, 1))
     return rho
 
 def getPressure(rho, k, n):
@@ -88,7 +99,7 @@ def getAcc(pos, vel, m, h, k, n, lmbda, nu):
     rho = getDensity(pos, pos, m, h)
     P = getPressure(rho, k, n)
     dx, dy, dz = getPairwiseSeparations(pos, pos)
-    dWx, dWy, dWz = gradW(dx, dy, dz, h)
+    dWx, dWy, dWz = WgradW(dx, dy, dz, h)[1:]
     ax = - np.sum(m * (P/rho**2 + P.T/rho.T**2) * dWx, 1).reshape((-1, 1))
     ay = - np.sum(m * (P/rho**2 + P.T/rho.T**2) * dWy, 1).reshape((-1, 1))
     az = - np.sum(m * (P/rho**2 + P.T/rho.T**2) * dWz, 1).reshape((-1, 1))
@@ -116,7 +127,7 @@ def main():
     dt = 0.001  # timestep in seconds
     M = 2 * M0  # star mass (2 solar masses)
     R = 11 * L0  # star radius (11 km)
-    h = 1.46 * L0  # smoothing length (2 km)
+    h = 2 * L0  # smoothing length (2 km)
     k = 1e-7 # equation of state constant (kg/(m·s^2))
     n = 1 # polytropic index
     nu = 20  # damping (1/s)
@@ -204,7 +215,7 @@ def main():
     plt.show()
 
     print("Error in %\n", (rho_radial.T-rho_analytic)/rho_analytic * 100)
-    print("Dimensional p2p with gaussian kernel - Runtime was: ", end-start)
+    print("Dimensional p2p with cubic spline kernel - Runtime was: ", end-start)
 
 
     return 0
