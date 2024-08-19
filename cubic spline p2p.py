@@ -121,7 +121,7 @@ def main():
     M0 = solar_mass  # characteristic mass
     L0 = 1 * km  # characteristic length - radius
 
-    N = 400  # Number of particles
+    N = 5000  # Number of particles
     t = 0  # current time of the simulation
     tEnd = 0.6  # time at which simulation ends
     dt = 0.001  # timestep in seconds
@@ -131,7 +131,7 @@ def main():
     k = 1e-7 # equation of state constant (kg/(m·s^2))
     n = 1 # polytropic index
     nu = 20  # damping (1/s)
-    plotRealTime = True  # switch on for plotting as the simulation goes along
+    plotRealTime = False  # switch on for plotting as the simulation goes along
 
     # Generate Initial Conditions
     np.random.seed(42)  # set the random number generator seed
