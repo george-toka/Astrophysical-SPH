@@ -1,0 +1,12 @@
+N       Gaussian P2P    Cubic Spline P2P((Un)Optimised)    KDTREE W/CUBIC SPLINE(v.1,2,3) (No realtime plotting)
+400     16.518          18.821, 13.956                     93.651, 68.193, 62.297      
+1000    126.317         135.309, 100.629                   274.002, 207.614, 188.966
+2000    500.243         614.654, 436.608                   730.693, 553.511, 495.384
+4000    2005.218               , 1897.851                  2066.816, 1636.999, 1449.159
+8000    8229.575                 7649.873                         , 5398.867, 4760.529
+
+SYSTEM:
+AMD RYZEN 7 1700
+G.Skill F4-3000C16-8GTZR DDR4 (x2)
+Palit NVIDIA GeForce GTX 1070Ti 
+ASUS PRIME X370-PRO
