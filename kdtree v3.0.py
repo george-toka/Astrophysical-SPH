@@ -7,7 +7,11 @@ import time
 # experiment with changing where the tree is created, DONE & ALMOST 0 DIFFERENCE
 # try parsing the r from the pairwise function to WGRADW -> data structs for r,dx,dy,dz as sparse matrtices and parse only them 1) ftiakse ta masks na pairnoun ta swsta indices 2) h kai r tetoia wste oti den einai mask1 einai mask2
 # Can i get rid of the for loop in pairwise UNFORTUNATELY NO
-# use poly6 kernel
+
+# try poly6 kernel
+# squeeze method used twice (1 neighbors, 1 gradW-W so change that)
+# instead of NX3 arrays create NX3X3 arrays for contiguous memory
+# You don't need rho for plotting
 
 
 def W(r, h, masks):
@@ -18,7 +22,7 @@ def W(r, h, masks):
     w: evaluated smoothing function
     """
     N = len(r)
-    M = 2000
+    M = 500
     w = np.zeros((N,M))
 
     ct = 1 / (np.pi*h**3)
@@ -41,9 +45,9 @@ def W(r, h, masks):
 
     return w
 
-def gradW(x, y, z, r, masks, h):
+def gradW(x, y, z, r, h, masks):
     N = len(r)
-    M = 2000
+    M = 500
     gradWx = np.zeros((N,M))
     gradWy = np.zeros((N,M))
     gradWz = np.zeros((N,M))
@@ -157,10 +161,10 @@ def getAcc(pos, vel, m, h, k, n, lmbda, nu, tree):
     dx, dy, dz, r, masks = getPairwiseSeparations(pos, pos, h, tree)
     rho = getDensity(r, m, h, masks)
     P = getPressure(rho, k, n)
-    dWx, dWy, dWz = gradW(dx, dy, dz, r, masks, h)
-    ax = - np.sum(m * (P/rho**2 + P.T/rho.T**2) * dWx, 1).reshape((-1, 1))
-    ay = - np.sum(m * (P/rho**2 + P.T/rho.T**2) * dWy, 1).reshape((-1, 1))
-    az = - np.sum(m * (P/rho**2 + P.T/rho.T**2) * dWz, 1).reshape((-1, 1))
+    dWx, dWy, dWz = gradW(dx, dy, dz, r, h, masks)
+    ax = - np.sum(m * (P/rho**2 + (P/rho**2).T) * dWx, 1).reshape((-1,1))
+    ay = - np.sum(m * (P/rho**2 + (P/rho**2).T) * dWy, 1).reshape((-1,1))
+    az = - np.sum(m * (P/rho**2 + (P/rho**2).T) * dWz, 1).reshape((-1,1))
     a = np.hstack((ax, ay, az))
     a -= lmbda * pos
     a -= nu * vel
@@ -179,7 +183,7 @@ def main():
     M0 = solar_mass  # characteristic mass
     L0 = 1 * km  # characteristic length - radius
 
-    N = 2000  # Number of particles
+    N = 500  # Number of particles
     t = 0  # current time of the simulation
     tEnd = 0.6  # time at which simulation ends
     dt = 0.001  # timestep in seconds
@@ -189,7 +193,7 @@ def main():
     k = 1e-7 # equation of state constant (kg/(m·s^2))
     n = 1 # polytropic index
     nu = 25  # damping (1/s)
-    plotRealTime = False  # switch on for plotting as the simulation goes along
+    plotRealTime = True  # switch on for plotting as the simulation goes along
 
     # Generate Initial Conditions
     np.random.seed(42)  # set the random number generator seed
