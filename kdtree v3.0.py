@@ -11,6 +11,7 @@ import time
 # try poly6 kernel
 # squeeze method used twice (1 neighbors, 1 gradW-W so change that)
 # instead of NX3 arrays create NX3X3 arrays for contiguous memory
+# stop initialising over and over again the w, gradW arrays inside W, gradW functions
 # You don't need rho for plotting
 
 
@@ -162,9 +163,10 @@ def getAcc(pos, vel, m, h, k, n, lmbda, nu, tree):
     rho = getDensity(r, m, h, masks)
     P = getPressure(rho, k, n)
     dWx, dWy, dWz = gradW(dx, dy, dz, r, h, masks)
-    ax = - np.sum(m * (P/rho**2 + (P/rho**2).T) * dWx, 1).reshape((-1,1))
-    ay = - np.sum(m * (P/rho**2 + (P/rho**2).T) * dWy, 1).reshape((-1,1))
-    az = - np.sum(m * (P/rho**2 + (P/rho**2).T) * dWz, 1).reshape((-1,1))
+    p_term = m * (P/rho**2 + (P/rho**2).T)
+    ax = - np.sum(p_term * dWx, 1).reshape((-1,1))
+    ay = - np.sum(p_term * dWy, 1).reshape((-1,1))
+    az = - np.sum(p_term * dWz, 1).reshape((-1,1))
     a = np.hstack((ax, ay, az))
     a -= lmbda * pos
     a -= nu * vel
