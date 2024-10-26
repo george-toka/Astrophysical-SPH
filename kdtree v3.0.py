@@ -19,7 +19,7 @@ def W(r, h, masks):
     h: smoothing length
     w: evaluated smoothing function
     """
-    N = 500
+    N = 1000
     M = len(r)
     w = np.zeros((M,N))
 
@@ -44,10 +44,10 @@ def W(r, h, masks):
     return w
 
 def gradW(x, y, z, r, h, masks):
-    N = 500
+    N = 1000
     delW = np.zeros((3, N, N))
 
-    ct = 1 / (np.pi*h**3)
+    ct = 1 / (np.pi*h**4)
     
     for i in range(N):
         ri = np.array(r[i][0])          
@@ -58,13 +58,13 @@ def gradW(x, y, z, r, h, masks):
         indices_mask2 = masks[i][0][3]
 
         if np.any(indices_mask1) != 0:
-            n = ct / h * (9/4 * ri[mask1] / h**2 - 3 / h)
+            n = ct * (9/4 * ri[mask1] / h**2 - 3 / h)
             delW[0][i][indices_mask1] = n * x[i][mask1]
             delW[1][i][indices_mask1] = n * y[i][mask1]
             delW[2][i][indices_mask1] = n * z[i][mask1]
 
         if np.any(indices_mask2) != 0:
-            n = ct / h * (-3/4 * (4 / ri[mask2] - 4 / h + ri[mask2] / h**2))
+            n = ct * (-3/4 * (4 / ri[mask2] - 4 / h + ri[mask2] / h**2))
             delW[0][i][indices_mask2] = n * x[i][mask2]
             delW[1][i][indices_mask2] = n * y[i][mask2]
             delW[2][i][indices_mask2] = n * z[i][mask2]
@@ -97,7 +97,7 @@ def getPairwiseSeparations(ri, rj, h, tree):
         
         # Compute squared distances
         r.append([np.sqrt(dx[-1]**2 + dy[-1]**2 + dz[-1]**2)])
-
+        print(r)
         # prepare masks for W and gradW
         rr = np.array(r[i][0])
         indices = np.array(indices)
@@ -179,7 +179,7 @@ def main():
     M0 = solar_mass  # characteristic mass
     L0 = 1 * km  # characteristic length - radius
 
-    N = 500 # number of particles
+    N = 1000 # number of particles
     t = 0  # current time of the simulation
     tEnd = 0.6  # time at which simulation ends
     dt = 0.001  # timestep in seconds
