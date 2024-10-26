@@ -26,7 +26,7 @@ def W(r, h, masks):
     ct = 1 / (np.pi*h**3)
     
     for i in range(M):
-        ri = np.array(r[i]).squeeze()            
+        ri = np.array(r[i][0])           
 
         mask1 = masks[i][0][0]
         mask2 = masks[i][0][1]
@@ -50,7 +50,7 @@ def gradW(x, y, z, r, h, masks):
     ct = 1 / (np.pi*h**3)
     
     for i in range(N):
-        ri = np.array(r[i]).squeeze()            
+        ri = np.array(r[i][0])          
 
         mask1 = masks[i][0][0]
         mask2 = masks[i][0][1]
@@ -99,7 +99,7 @@ def getPairwiseSeparations(ri, rj, h, tree):
         r.append([np.sqrt(dx[-1]**2 + dy[-1]**2 + dz[-1]**2)])
 
         # prepare masks for W and gradW
-        rr = np.array(r[i]).squeeze()
+        rr = np.array(r[i][0])
         indices = np.array(indices)
         q = rr / h
         
@@ -109,8 +109,7 @@ def getPairwiseSeparations(ri, rj, h, tree):
         indices_mask1 = indices[mask1]
         indices_mask2 = indices[mask2] 
 
-        masks.append([])
-        masks[i].append([mask1, mask2, indices_mask1, indices_mask2])
+        masks.append([[mask1, mask2, indices_mask1, indices_mask2]])
 
     return dx, dy, dz, r, masks
 
