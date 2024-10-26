@@ -8,12 +8,13 @@ import time
 # try parsing the r from the pairwise function to WGRADW -> data structs for r,dx,dy,dz as sparse matrtices and parse only them 1) ftiakse ta masks na pairnoun ta swsta indices 2) h kai r tetoia wste oti den einai mask1 einai mask2
 # Can i get rid of the for loop in pairwise UNFORTUNATELY NO
 
+#----OPTIMISATIONS-----
 # try poly6 kernel
 # squeeze method used twice (1 neighbors, 1 gradW-W so change that)
 # instead of NX3 arrays create NX3X3 arrays for contiguous memory
 # stop initialising over and over again the w, gradW arrays inside W, gradW functions
 # You don't need rho for plotting
-
+# Fix the allocation problem for memory 
 
 def W(r, h, masks):
     """
@@ -86,7 +87,7 @@ def getPairwiseSeparations(ri, rj, h, tree):
     dx, dy, dz: M x N matrices of separations
     """
     # Builds the KD-Tree and returns each point's neighbors in index order
-    neighbors = tree.query_ball_point(ri, r=3500)
+    neighbors = tree.query_ball_point(ri, r=2*h)
    
     # Initialise with big values so that distant points are not taken into account
     dx, dy, dz, r, masks = [], [], [], [], []
@@ -110,7 +111,7 @@ def getPairwiseSeparations(ri, rj, h, tree):
         q = rr / h
         
         mask1 = q <= 1
-        mask2 = (q > 1) & (q <= 2)
+        mask2 = ~ mask1
 
         indices_mask1 = indices[mask1]
         indices_mask2 = indices[mask2] 
@@ -252,7 +253,7 @@ def main():
         rho = getDensity(r, m, h, masks)
         
         #to determine timestep
-        #print(str(vel.max()))
+        print(str(vel.max()))
 
         # plot in real time
         if plotRealTime or (i == Nt-1):
