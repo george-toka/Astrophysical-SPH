@@ -10,10 +10,6 @@ import time
 
 #----OPTIMISATIONS-----
 # try poly6 kernel
-# squeeze method used twice (1 neighbors, 1 gradW-W so change that)
-# instead of NX3 arrays create NX3X3 arrays for contiguous memory
-# stop initialising over and over again the w, gradW arrays inside W, gradW functions
-# You don't need rho for plotting
 # Fix the allocation problem for memory 
 
 def W(r, h, masks):
@@ -23,13 +19,13 @@ def W(r, h, masks):
     h: smoothing length
     w: evaluated smoothing function
     """
-    N = len(r)
-    M = 500
-    w = np.zeros((N,M))
+    N = 500
+    M = len(r)
+    w = np.zeros((M,N))
 
     ct = 1 / (np.pi*h**3)
     
-    for i in range(N):
+    for i in range(M):
         ri = np.array(r[i]).squeeze()            
 
         mask1 = masks[i][0][0]
@@ -48,11 +44,8 @@ def W(r, h, masks):
     return w
 
 def gradW(x, y, z, r, h, masks):
-    N = len(r)
-    M = 500
-    gradWx = np.zeros((N,M))
-    gradWy = np.zeros((N,M))
-    gradWz = np.zeros((N,M))
+    N = 500
+    delW = np.zeros((3, N, N))
 
     ct = 1 / (np.pi*h**3)
     
@@ -66,17 +59,17 @@ def gradW(x, y, z, r, h, masks):
 
         if np.any(indices_mask1) != 0:
             n = ct / h * (9/4 * ri[mask1] / h**2 - 3 / h)
-            gradWx[i][indices_mask1] = n * x[i][mask1]
-            gradWy[i][indices_mask1] = n * y[i][mask1]
-            gradWz[i][indices_mask1] = n * z[i][mask1]
+            delW[0][i][indices_mask1] = n * x[i][mask1]
+            delW[1][i][indices_mask1] = n * y[i][mask1]
+            delW[2][i][indices_mask1] = n * z[i][mask1]
 
         if np.any(indices_mask2) != 0:
             n = ct / h * (-3/4 * (4 / ri[mask2] - 4 / h + ri[mask2] / h**2))
-            gradWx[i][indices_mask2] = n * x[i][mask2]
-            gradWy[i][indices_mask2] = n * y[i][mask2]
-            gradWz[i][indices_mask2] = n * z[i][mask2]
+            delW[0][i][indices_mask2] = n * x[i][mask2]
+            delW[1][i][indices_mask2] = n * y[i][mask2]
+            delW[2][i][indices_mask2] = n * z[i][mask2]
 
-    return gradWx, gradWy, gradWz
+    return delW[0], delW[1], delW[2]
 
 
 def getPairwiseSeparations(ri, rj, h, tree):
@@ -173,6 +166,7 @@ def getAcc(pos, vel, m, h, k, n, lmbda, nu, tree):
     a -= nu * vel
     return a
 
+
 def main():
     """ SPH simulation """
 
@@ -186,7 +180,7 @@ def main():
     M0 = solar_mass  # characteristic mass
     L0 = 1 * km  # characteristic length - radius
 
-    N = 500  # Number of particles
+    N = 500 # number of particles
     t = 0  # current time of the simulation
     tEnd = 0.6  # time at which simulation ends
     dt = 0.001  # timestep in seconds
@@ -196,7 +190,7 @@ def main():
     k = 1e-7 # equation of state constant (kg/(m·s^2))
     n = 1 # polytropic index
     nu = 25  # damping (1/s)
-    plotRealTime = True  # switch on for plotting as the simulation goes along
+    plotRealTime = False  # switch on for plotting as the simulation goes along
 
     # Generate Initial Conditions
     np.random.seed(42)  # set the random number generator seed
@@ -223,7 +217,7 @@ def main():
     rr = np.zeros((100, 3))
     rlin = np.linspace(0, R, 100)
     rr[:, 0] = rlin
-    rho_analytic = ((lmbda / (2*k*(1+n)) * (R**2 - rlin**2)) ** n ) 
+    rho_analytic = ((lmbda / (2*k*(1+n)) * (R**2 - rlin**2)) ** n) 
 
     # To make the analytic and arithmetic solution viewable
     plot_scale_factor = 1e14
@@ -247,16 +241,15 @@ def main():
 
         # update time
         t += dt
-
-        # get density for plotting
-        r, masks = getPairwiseSeparations(pos, pos, h, tree)[3:]
-        rho = getDensity(r, m, h, masks)
         
         #to determine timestep
-        print(str(vel.max()))
+        #print(str(vel.max()))
 
         # plot in real time
         if plotRealTime or (i == Nt-1):
+            # get density for plotting
+            r, masks = getPairwiseSeparations(pos, pos, h, tree)[3:]
+            rho = getDensity(r, m, h, masks)
             plt.sca(ax1)
             plt.cla()
             cval = np.minimum((rho - 3) / 3, 1).flatten()
