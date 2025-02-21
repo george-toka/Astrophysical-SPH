@@ -38,7 +38,7 @@ def gradW( x, y, z, r, h ):
 	
 	return wx, wy, wz
 
-def gravityKernel(x, y, z, r, h):
+def gravityKernel(r, h):
 	N = r.shape[0]
 	PHI = np.zeros((N,N))
 
@@ -362,7 +362,7 @@ def main():
         KE = 0.5 * m * np.sum(np.sum(vel**2, axis=1))
 
         # Get Potential Energy
-        #PHI = gravityKernel(dx, dy, dz, r, h)
+        #PHI = gravityKernel(r, h)
         #PE = G * m**2 / 2 * np.sum(np.sum(PHI, axis=1))
         PE = - G * m**2 / 2 * np.sum(np.sum(1/r_g**(1/2), axis=1))
 
