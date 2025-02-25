@@ -159,16 +159,15 @@ def getAcc(pos, vel, m, h, k, G, n, alpha, beta):
 	dWx, dWy, dWz = gradW(dx, dy, dz, r, h)
 
 	# Compute velocity differences
-	vx, vy, vz, _ = getPairwiseSeparations(vel, vel)
+	vij_x, vij_y, vij_z, _ = getPairwiseSeparations(vel, vel)
 
 	# Compute divergence of velocity (∇·v)
-	div_v = np.sum(m * (vx * dWx + vy * dWy + vz * dWz) / rho, axis=1)
-	#div_v = np.sum(m * ((vx-vx.T) * dWx + (vy-vy.T) * dWy + (vz-vz.T) * dWz) , axis=1) / rho # needs smaller timestep
+	div_v = - np.sum(m * (vij_x * dWx + vij_y * dWy + vij_z * dWz) , axis=1) / rho
 
-	# Compute vorticity (∇×v)
-	omega_x = np.sum(m * ((vy * dWz - vz * dWy) / rho), axis=1)
-	omega_y = np.sum(m * ((vz * dWx - vx * dWz) / rho), axis=1)
-	omega_z = np.sum(m * ((vx * dWy - vy * dWx) / rho), axis=1)
+	# Compute vorticity (∇×v) with difference formula
+	omega_x = np.sum(m * ((vij_y * dWz - vij_z * dWy) / rho), axis=1)
+	omega_y = np.sum(m * ((vij_z * dWx - vij_x * dWz) / rho), axis=1)
+	omega_z = np.sum(m * ((vij_x * dWy - vij_y * dWx) / rho), axis=1)
 	vorticity = np.sqrt(omega_x**2 + omega_y**2 + omega_z**2)
 
 	# Compute sound speed at each position
@@ -181,13 +180,15 @@ def getAcc(pos, vel, m, h, k, G, n, alpha, beta):
 	# Compute averages
 	c_avg = (c + c.T) / 2
 	f_avg = (f + f.T) / 2
+	rho_avg = (rho + rho.T) / 2
 
 	# Compute artificial viscosity term
-	r2 = dx**2 + dy**2 + dz**2 + 0.01 * h**2
-	v_dot_r = vx * dx + vy * dy + vz * dz
-	mu = np.where(v_dot_r < 0, h * v_dot_r / r2, 0) * f_avg / c_avg
+	r2_safe = dx**2 + dy**2 + dz**2 + 0.01 * h**2
+	v_dot_r = vij_x * dx + vij_y * dy + vij_z * dz
+	mu = np.where(v_dot_r <= 0, h * v_dot_r / r2_safe, 0) * f_avg
+	mu_max = mu.max()
 
-	Pi_ij = (-alpha * mu + beta * mu**2)
+	Pi_ij = (-alpha * c_avg * mu + beta * mu**2) / rho_avg
 
 	# Compute acceleration due to pressure and artificial viscosity
 	p_term = (P / rho**2 + P.T / rho.T**2)
@@ -197,10 +198,8 @@ def getAcc(pos, vel, m, h, k, G, n, alpha, beta):
 	az = -np.sum(pAV_term * dWz, axis=1)
 
 	# Gravity contribution
-	e = 0.001
 	ct = m * G
-	r_g = dx**2 + dy**2 + dz**2 + e
-	r_inv = r_g**(3/2)
+	r_inv = r2_safe**(3/2)
 	gx = ct * dx / r_inv
 	gy = ct * dy / r_inv
 	gz = ct * dz / r_inv
@@ -211,250 +210,213 @@ def getAcc(pos, vel, m, h, k, G, n, alpha, beta):
 
 	# Pack acceleration components
 	a = np.column_stack((ax, ay, az))
-	a_max = np.sqrt(np.sum(a**2, axis=1)).max() # used for adaptive timestepping
 
-	return a, r_g, rho, a_max, dWx, dWy, dWz, c_max
-
-
-def timestepSelector(vel, alpha, beta, h, eta, m, dWx, dWy, dWz, rho, c_max, a_max):
-	"""
-	Timestep Selector Algorithm
-
-	Parameters:
-	vel   : N x 3 matrix of velocities
-	c_max : maximum sound speed observed
-	a_max : maximum acceleration observed
-	eta   : scaling timestep factor
-	alpha, beta : artificial viscosity parameters (default: α=1, β=2)
-	"""
-	# Compute relative velocities
-	vx, vy, vz, _ = getPairwiseSeparations(vel, vel)
-
-	# Find divergence of v
-	abs_div_v = np.abs(np.sum(m * (vx * dWx + vy * dWy + vz * dWz) / rho, axis=1)).max()
-	
-	# Courant–Friedrichs–Lewy condition for AV 
-	dt_cfl = 0.3 * h / (c_max + h * abs_div_v + 1.2 * (alpha * c_max + beta * h * abs_div_v)) # NUM and DENOM factors are empirical (0.3 and 1.2 in documentation)
-
-	# Use timestep method from Goswamiy and Pajarola
-	v_max = np.sqrt(np.sum(vel**2, axis=1)).max()
-	v_max =  v_max + np.sqrt(h*a_max*m)
-
-	if(v_max < alpha * c_max):
-		dt = eta * dt_cfl
-	else:
-		dt = dt_cfl
-
-	return dt
+	return a, r2_safe, rho, dWx, dWy, dWz, c_max, mu_max
 
 
 def main():
-    """ SPH simulation """
-    
-    # Start clock
-    start = time.time()
-
-    # Simulation parameters
-    N         = 400    # Number of particles
-    t         = 0      # current time of the simulation
-    tEnd      = 40     # time at which simulation ends
-    dt        = 0.01   # timestep
-    M         = 2      # star mass
-    R         = 0.75   # star radius
-    h         = 0.1    # smoothing length
-    G		  = 1	   # Universal constant		
-    k         = 1    # equation of state constant
-    n         = 3      # polytropic index
-    alpha     = 1      # constant to handle bulk viscocity
-    beta      = 2      # constant to handle particle interpenetration
-    plotRealTime = 	False # switch on for plotting as the simulation goes along
-    
-    # Generate Initial Conditions
-    np.random.seed(42)            # set the random number generator seed
-    
-    lmbda = 2*k*(1+n)*np.pi**(-3/(2*n)) * (M*gamma(5/2+n)/R**3/gamma(1+n))**(1/n) / R**2  # ~ 2.01
-    m     = M/N                    # single particle mass
-    pos   = np.random.randn(N,3)   # randomly selected positions and velocities
+	""" SPH simulation """
 	
-    # Compute radius in the xy-plane
-    r = np.sqrt(pos[:, 0]**2 + pos[:, 1]**2)
+	# Start clock
+	start = time.time()
 
-    # Define angular velocity (can be constant or depend on r)
-    omega = 0.1  # Adjust as needed
+	# Simulation parameters
+	N         = 400    # Number of particles
+	t         = 0      # current time of the simulation
+	tEnd      = 40     # time at which simulation ends
+	dt        = 0.01   # timestep
+	M         = 2      # star mass
+	R         = 0.75   # star radius
+	h         = 0.1    # smoothing length
+	G		  = 1	   # Universal constant		
+	k         = 1    # equation of state constant
+	n         = 3      # polytropic index
+	alpha     = 1      # constant to handle bulk viscocity
+	beta      = 2      # constant to handle particle interpenetration
+	plotRealTime = 	True # switch on for plotting as the simulation goes along
 
-    # Compute velocity components for rotation around the z-axis
-    vel = np.zeros_like(pos)  # Initialize velocity array
-    vel[:, 0] = -omega * pos[:, 1]  # v_x = -ωy
-    vel[:, 1] = omega * pos[:, 0]   # v_y = ωx
-    vel[:, 2] = 0  # No motion in the z-direction
+	# Generate Initial Conditions
+	np.random.seed(42)            # set the random number generator seed
 
-    # Add random noise to velocity if desired
-    vel += 0.01 * np.random.randn(N, 3)  # Small random perturbation
-    
-    # Prep figure for rho profile and particle simulation
-    fig1 = plt.figure(figsize=(4,5), dpi=80)
-    grid1 = plt.GridSpec(3, 1, wspace=0.0, hspace=0.3)
-    ax1 = plt.subplot(grid1[0:2,0])
-    ax2 = plt.subplot(grid1[2,0])
-    rr = np.zeros((100,3))
-    rlin = np.linspace(0,1,100)
-    rr[:,0] =rlin
-    rho_analytic = lmbda/(4*k) * (R**2 - rlin**2)
+	lmbda = 2*k*(1+n)*np.pi**(-3/(2*n)) * (M*gamma(5/2+n)/R**3/gamma(1+n))**(1/n) / R**2  # ~ 2.01
+	m     = M/N                    # single particle mass
+	pos   = np.random.randn(N,3)   # randomly selected positions and velocities
 
-    # Prep figure for conservation checks
-    fig2 = plt.figure(figsize=(4,5), dpi=80)
-    grid2 = plt.GridSpec(3,1, hspace=0.4)
-    nrg_plot = plt.subplot(grid2[0,0])
-    p_plot = plt.subplot(grid2[1,0])
-    l_plot = plt.subplot(grid2[2,0])
-        
-    # Calculate initial gravitational accelerations
-    acc, r_g, rho, a_max, dWx, dWy, dWz, c_max = getAcc(pos, vel, m, h, k, G, n, alpha, beta)
-    dt = timestepSelector(vel, alpha, beta, h, 4, m, dWx, dWy, dWz, rho, c_max, a_max)
-    
-    # Statistics for real time simulation
-    t_all = [t]
+	# Define angular velocity (can be constant or depend on r)
+	omega = 0.1  
+	r_com = np.sum(pos, axis=0) / N
 
-    KE_hist = [0.5 * m * np.sum(np.sum(vel**2, axis=1))]
+	# Compute velocity components for rotation around the z-axis
+	vel = np.zeros_like(pos)  # Initialize velocity array
+	vel[:, 0] = -omega * (pos[:, 1] - r_com[1])  # v_x = -ωy
+	vel[:, 1] = omega * (pos[:, 0] - r_com[0])  # v_y = ωx
+	vel[:, 2] = 0  # No motion in the z-direction
 
-    #dx, dy, dz, r = getPairwiseSeparations(pos, pos)
-    #PE_hist = [G * m**2 / 2  * np.sum(np.sum(gravityKernel(dx, dy, dz, r, h), axis=1))]
-    PE_hist = [- G * m**2 / 2 * np.sum(np.sum(1/(r_g)**(1/2), axis=1))]
-	
-    #U = m * (n*k) * np.sum(rho**(1/n))
-    #U_hist = [U]
+	# Add random noise to velocity if desired
+	#vel += 0.01 * np.random.randn(N, 3)  # Small random perturbation
 
-    Etot_hist = [KE_hist[0] + PE_hist[0]]
+	# Prep figure for rho profile and particle simulation
+	fig1 = plt.figure(figsize=(4,5), dpi=80)
+	grid1 = plt.GridSpec(3, 1, wspace=0.0, hspace=0.3)
+	ax1 = plt.subplot(grid1[0:2,0])
+	ax2 = plt.subplot(grid1[2,0])
+	rr = np.zeros((100,3))
+	rlin = np.linspace(0,1,100)
+	rr[:,0] =rlin
+	rho_analytic = lmbda/(4*k) * (R**2 - rlin**2)
 
-    r_com = np.sum(pos, axis=0) / N
-    p = m * np.sum(vel, axis=0)
-    l = m * np.sum(np.cross(pos-r_com, vel), axis=0)
+	# Prep figure for conservation checks
+	fig2 = plt.figure(figsize=(4,5), dpi=80)
+	grid2 = plt.GridSpec(3,1, hspace=0.4)
+	nrg_plot = plt.subplot(grid2[0,0])
+	p_plot = plt.subplot(grid2[1,0])
+	l_plot = plt.subplot(grid2[2,0])
+		
+	# Calculate initial gravitational accelerations
+	acc, r2_safe, rho, dWx, dWy, dWz, c_max, mu_max = getAcc(pos, vel, m, h, k, G, n, alpha, beta)
 
-    p = np.sqrt(np.sum(p**2))
-    l = np.sqrt(np.sum(l**2))
+	# Timestep Selector
+	a_max = np.sqrt(np.sum(acc**2, axis=1)).max() 
+	vij_x, vij_y, vij_z, _ = getPairwiseSeparations(vel, vel)
+	abs_div_v = np.abs(-np.sum(m * (vij_x * dWx + vij_y * dWy + vij_z * dWz) , axis=1) / rho)
+	dt = 0.3 * min(np.sqrt(h / a_max), h / (c_max + 1.2 * (alpha * c_max + beta * mu_max)))
 
-    p_hist = [p]
-    l_hist = [l]
+	# Statistics for real time simulation
+	t_all = [t]
 
-    # Simulation Main Loop /w KDK 
-    while(t < tEnd):
-        # (1/2) Kick
-        vel += acc * dt/2
-        
-        # Drift
-        pos += vel * dt
-        
-        # Update accelerations
-        acc, r_g, rho, a_max, dWx, dWy, dWz, c_max = getAcc(pos, vel, m, h, k, G, n, alpha, beta)
+	KE_hist = [0.5 * m * np.sum(np.sum(vel**2, axis=1))]
+	PE_hist = [- G * m**2 / 2 * np.sum(np.sum(1/(r2_safe)**(1/2), axis=1))]
+	Etot_hist = [KE_hist[0] + PE_hist[0]]
 
-        # (1/2) Kick
-        vel += acc * dt/2
+	p = m * np.sum(vel, axis=0)
+	l = m * np.sum(np.cross(pos-r_com, vel), axis=0)
 
-        # Adaptive Timestep after a whole KDK cycle
-        dt = timestepSelector(vel, alpha, beta, h, 4, m, dWx, dWy, dWz, rho, c_max, a_max)
+	p = np.sqrt(np.sum(p**2))
+	l = np.sqrt(np.sum(l**2))
 
-        # Update time
-        t += dt
-        
-        # Calculate all statistics
-        
-        # Get Kinetic Energy
-        KE = 0.5 * m * np.sum(np.sum(vel**2, axis=1))
+	p_hist = [p]
+	l_hist = [l]
 
-        # Get Potential Energy
-        #PHI = gravityKernel(r, h)
-        #PE = G * m**2 / 2 * np.sum(np.sum(PHI, axis=1))
-        PE = - G * m**2 / 2 * np.sum(np.sum(1/r_g**(1/2), axis=1))
+	# Simulation Main Loop /w KDK 
+	while(t < tEnd):
+		# (1/2) Kick
+		vel += acc * dt/2
+		
+		# Drift
+		pos += vel * dt
+		
+		# Update accelerations
+		acc, r2_safe, rho, dWx, dWy, dWz, c_max, mu_max = getAcc(pos, vel, m, h, k, G, n, alpha, beta)
 
-        #U = m * (n*k) * np.sum(rho**(1/n))				
+		# (1/2) Kick
+		vel += acc * dt/2
 
-        # Get Center of Mass + Linear & Angular Momentum on each axis
-        r_com = np.sum(pos, axis=0) / N 
-        p = m * np.sum(vel, axis=0)
-        l = m * np.sum(np.cross(pos-r_com, vel), axis=0)
-        
-        p = np.sqrt(np.sum(p**2))
-        l = np.sqrt(np.sum(l**2)) 
+		# Adaptive Timestep after a whole KDK cycle
+		vel_r = np.sqrt(np.sum(vel**2, axis=1))
+		a_max = np.sqrt(np.sum(acc**2, axis=1)).max() 
+		vij_x, vij_y, vij_z, _ = getPairwiseSeparations(vel, vel)
+		abs_div_v = np.abs(-np.sum(m * (vij_x * dWx + vij_y * dWy + vij_z * dWz) , axis=1) / rho)
+		dt = min(1 / abs_div_v.max(), h / vel_r.max(), np.sqrt(h / a_max), h / (c_max + 1.2 * (alpha * c_max + beta * mu_max)))
 
-        # Append time series of statistics
-        t_all.append(t)
-        KE_hist.append(KE)
-        PE_hist.append(PE)
-        Etot_hist.append(KE+PE)
-        p_hist.append(p)
-        l_hist.append(l)
+		# Update time
+		t += dt
+		
+		# Calculate all statistics
+		
+		# Get Kinetic Energy
+		KE = 0.5 * m * np.sum(vel_r**2)
 
-        # Plot in real time
-        if plotRealTime or (t >= tEnd):
-            # Get density for plotting
-            plt.sca(ax1)
-            plt.cla()
-            cval = np.minimum((rho-3)/3,1).flatten()
-            plt.scatter(pos[:,0],pos[:,1], c=cval, cmap=plt.cm.autumn, s=10, alpha=0.5)
-            ax1.set(xlim=(-1.4, 1.4), ylim=(-1.4, 1.4))
-            ax1.set_aspect('equal', 'box')
-            ax1.set_xticks([-1,0,1])
-            ax1.set_yticks([-1,0,1])
-            ax1.set_facecolor('black')
-            ax1.set_facecolor((.1,.1,.1))
-            
-            plt.sca(ax2)
-            plt.cla()
-            rplot = getPairwiseSeparations(rr, pos)[-1]
-            rho_radial = getDensity( rplot, m, h )
-            ax2.set(xlim=(0, 1), ylim=(0, np.max(rho_radial)))
-            ax2.set_aspect(0.1)
-            plt.plot(rlin, rho_analytic, color='gray', linewidth=2)
-            plt.plot(rlin, rho_radial, color='blue')
-            plt.pause(0.001)
+		# Get Potential Energy
+		PE = - G * m**2 * np.sum(np.sum(1/r2_safe**(1/2), axis=1)) / 2
 
-            # Plot statistics in figure 2
-            plt.sca(nrg_plot)
-            plt.cla()
-            plt.plot(t_all, KE_hist, color="red")
-            plt.plot(t_all, PE_hist, color="blue")
-            plt.plot(t_all, Etot_hist, color="black")
+		# Get Center of Mass + Linear & Angular Momentum on each axis
+		r_com = np.sum(pos, axis=0) / N 
+		print(r_com)
+		p = m * np.sum(vel, axis=0)
+		l = m * np.sum(np.cross(pos-r_com, vel), axis=0)
+		
+		p = np.sqrt(np.sum(p**2))
+		l = np.sqrt(np.sum(l**2)) 
 
-            plt.sca(p_plot)
-            plt.cla()
-            plt.plot(t_all, p_hist, color = "orange")
+		# Append time series of statistics
+		t_all.append(t)
+		KE_hist.append(KE)
+		PE_hist.append(PE)
+		Etot_hist.append(KE+PE)
+		p_hist.append(p)
+		l_hist.append(l)
 
-            plt.sca(l_plot)
-            plt.cla()
-            plt.plot(t_all, l_hist, color = "pink") 
+		# Plot in real time
+		if plotRealTime or (t >= tEnd):
+			# Get density for plotting
+			plt.sca(ax1)
+			plt.cla()
+			cval = np.minimum((rho-3)/3,1).flatten()
+			plt.scatter(pos[:,0],pos[:,1], c=cval, cmap=plt.cm.autumn, s=10, alpha=0.5)
+			ax1.set(xlim=(-1.4, 1.4), ylim=(-1.4, 1.4))
+			ax1.set_aspect('equal', 'box')
+			ax1.set_xticks([-1,0,1])
+			ax1.set_yticks([-1,0,1])
+			ax1.set_facecolor('black')
+			ax1.set_facecolor((.1,.1,.1))
+			
+			plt.sca(ax2)
+			plt.cla()
+			rplot = getPairwiseSeparations(rr, pos)[-1]
+			rho_radial = getDensity( rplot, m, h )
+			ax2.set(xlim=(0, 1), ylim=(0, np.max(rho_radial)))
+			ax2.set_aspect(0.1)
+			plt.plot(rlin, rho_analytic, color='gray', linewidth=2)
+			plt.plot(rlin, rho_radial, color='blue')
+			plt.pause(0.001)
 
-        
-    # End clock
-    end = time.time()
-    
-    # Print runtime and errors
-    print("Runtime with pairwise pressure & gravity was:", end-start)
-    #print("Errors: ")
+			# Plot statistics in figure 2
+			plt.sca(nrg_plot)
+			plt.cla()
+			plt.plot(t_all, KE_hist, color="red")
+			plt.plot(t_all, PE_hist, color="blue")
+			plt.plot(t_all, Etot_hist, color="black")
 
-    # Add labels/legend
-    plt.sca(ax2)
-    plt.xlabel('radius')
-    plt.ylabel('density')
+			plt.sca(p_plot)
+			plt.cla()
+			plt.plot(t_all, p_hist, color = "orange")
 
-    plt.sca(nrg_plot)
-    plt.xlabel('time')
-    plt.ylabel('energy')
+			plt.sca(l_plot)
+			plt.cla()
+			plt.plot(t_all, l_hist, color = "pink") 
 
-    plt.sca(p_plot)
-    plt.xlabel('time')
-    plt.ylabel('Linear Momentum')
-    
-    plt.sca(l_plot)
-    plt.xlabel('time')
-    plt.ylabel('Angular Momentum')
+		
+	# End clock
+	end = time.time()
+
+	# Print runtime and errors
+	print("Runtime with pairwise pressure & gravity was:", end-start)
+	#print("Errors: ")
+
+	# Add labels/legend
+	plt.sca(ax2)
+	plt.xlabel('radius')
+	plt.ylabel('density')
+
+	plt.sca(nrg_plot)
+	plt.xlabel('time')
+	plt.ylabel('energy')
+
+	plt.sca(p_plot)
+	plt.xlabel('time')
+	plt.ylabel('Linear Momentum')
+
+	plt.sca(l_plot)
+	plt.xlabel('time')
+	plt.ylabel('Angular Momentum')
 
 
-    # Save figure
-    fig1.savefig('clean_folder/1)pairwise&pairwise/star.png',dpi=240)
-    fig2.savefig('clean_folder/1)pairwise&pairwise/statistics.png',dpi=240)
-    plt.show()
-        
-    return 0
+	# Save figure
+	fig1.savefig('clean_folder/1)pairwise&pairwise/star.png',dpi=240)
+	fig2.savefig('clean_folder/1)pairwise&pairwise/statistics.png',dpi=240)
+	plt.show()
+		
+	return 0
     
 
 
