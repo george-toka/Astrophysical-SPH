@@ -90,7 +90,4 @@ include("sph_manager.jl")
 * Refer to comments inside `iniconds.jl` and `sph_manager.jl` for detailed customization options.
 
 
----
 
-If you paste this whole block into your README.md file, it will render nicely on GitHub or any markdown viewer. Let me know if you want it tailored for other formats!
-```
