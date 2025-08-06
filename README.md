@@ -1,6 +1,4 @@
-Sure! Here’s the exact markdown text you can put in your README file to get the polished look I formatted above:
 
-````markdown
 # Astrophysical SPH Simulation Engine — User Guide
 
 Welcome to the **Astrophysical SPH Simulation Engine**!  
@@ -15,7 +13,7 @@ This engine allows you to generate initial conditions and run astrophysical Smoo
 ```bash
 git clone <repository_url>
 cd fastv1_kd&single_oc
-````
+
 
 ### 2. Launch Julia REPL
 
