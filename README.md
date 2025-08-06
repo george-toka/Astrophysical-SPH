@@ -82,6 +82,7 @@ include("sph_manager.jl")
 
 ### 5. Execution
 After setting up your environment and assigning your ARGS with all needed arguments, run the sph_manager.jl file.
+
 ---
 
 ## Notes
