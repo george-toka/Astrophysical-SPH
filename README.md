@@ -80,7 +80,8 @@ include("sph_manager.jl")
 * The `false` flag disables saving of PNG plots.
   The last three parameters are not mandatory to be set by the user, because they have their default values
 
-### 5. Run the sph_manager.jl file
+### 5. Execution
+After setting up your environment and assigning your ARGS with all needed arguments, run the sph_manager.jl file.
 ---
 
 ## Notes
