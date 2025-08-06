@@ -1,5 +1,5 @@
 We have created an engine for Astrophysical SPH simulations. This engine uses ArgParse package from julia to emulate a CLI-like 
-package. The usage guide is pretty simple.
+package. The user guide is pretty simple.
 
 1) Clone Git Repository
 2) Activate Julia REPL
