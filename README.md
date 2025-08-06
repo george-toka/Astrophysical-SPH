@@ -11,9 +11,8 @@ This engine allows you to generate initial conditions and run astrophysical Smoo
 ### 1. Clone the Git Repository
 
 ```bash
-git clone <repository_url>
-cd fastv1_kd&single_oc
-
+git clone https://github.com/george-toka/Astrophysical-SPH.git
+```
 
 ### 2. Launch Julia REPL
 
@@ -21,11 +20,21 @@ cd fastv1_kd&single_oc
 julia
 ```
 
-### 3. Load the ArgParse Package and Set Arguments
+### 3. Change directory
+
+```bash
+julia> cd("julia_version/fastv1_kd&single_oc")
+```
+
+### 4. Load the ArgParse Package and Set Arguments
+
+```bash
+julia> using ArgParse
+```
 
 Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
 
----
+
 
 ## Available Modes
 
@@ -69,7 +78,9 @@ include("sph_manager.jl")
 * Snapshots will be taken every 5 steps (`snapshot interval = 5`).
 * The `true` flag means snapshots are saved.
 * The `false` flag disables saving of PNG plots.
+  The last three parameters are not mandatory to be set by the user, because they have their default values
 
+### 5. Run the sph_manager.jl file
 ---
 
 ## Notes
@@ -78,11 +89,6 @@ include("sph_manager.jl")
 * The CLI interface (`ARGS`) keeps terminal commands concise.
 * Refer to comments inside `iniconds.jl` and `sph_manager.jl` for detailed customization options.
 
----
-
-If you have questions or want to contribute, feel free to open an issue or submit a pull request!
-
-```
 
 ---
 
