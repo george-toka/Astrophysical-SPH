@@ -26,7 +26,17 @@ julia
 julia> cd("julia_version/fastv1_kd&single_oc")
 ```
 
-### 4. Load the ArgParse Package and Set Arguments
+### 4. Install required dependencies
+
+```bash
+julia> dependencies = ["Random", "LinearAlgebra", "Statistics", "DifferentialEquations", "Interpolations", "QuadGK", "FFTW", "ArgParse", "GLMakie", "Mmap", "NearestNeighbors", "DataStructures", "CSV", "DataFrames", "DelimitedFiles"]
+julia> import Pkg;
+jullia> Pkg.add(dependencies)
+```
+
+Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
+
+### 5. Load the ArgParse Package and Set Arguments
 
 ```bash
 julia> using ArgParse
@@ -34,7 +44,9 @@ julia> using ArgParse
 
 Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
 
+### 6. Execution
 
+After setting up your environment and assigning your ARGS with all needed arguments, run the sph_manager.jl file.
 
 ## Available Modes
 
@@ -79,10 +91,6 @@ include("sph_manager.jl")
 * The `true` flag means snapshots are saved.
 * The `false` flag disables saving of PNG plots.
   The last three parameters are not mandatory to be set by the user, because they have their default values
-
-### 5. Execution
-
-After setting up your environment and assigning your ARGS with all needed arguments, run the sph_manager.jl file.
 
 ---
 
