@@ -48,6 +48,9 @@ Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to con
 ### 6. Execution
 
 After setting up your environment and assigning your ARGS with all needed arguments, run the sph_manager.jl file.
+```bash
+julia> include("sph_manager.jl") 
+```
 
 ## Available Modes
 
