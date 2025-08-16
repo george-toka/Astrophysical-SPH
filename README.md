@@ -40,6 +40,7 @@ Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to con
 
 ```bash
 julia> using ArgParse
+ARGS = [...] # Below is shown, how to set ARGS properly
 ```
 
 Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
