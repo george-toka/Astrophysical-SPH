@@ -72,8 +72,8 @@ The engine supports two base options controlled by the `ARGS` variable:
 ### Example 1: Generate Initial Conditions for Gaussian Sphere with Polytropic EOS
 
 ```julia
-ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere"]
-include("sph_manager.jl")
+ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere"] # Without custom parameters
+ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere", "--kwargs", "N=5000 , R=5.38552341e16, axis=[1 0 0], Ω_frac=0.25"] # With custom parameters
 ```
 
 * This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`) with default parameters.
@@ -84,7 +84,6 @@ include("sph_manager.jl")
 
 ```julia
 ARGS = ["--run", "--EOS", "polytropic", "--ic-type", "gaussian_sphere", "1", "5", "true", "false"]
-include("sph_manager.jl")
 ```
 
 * This starts a polytropic simulation using snapshot ID `1`.
