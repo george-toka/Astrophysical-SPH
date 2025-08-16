@@ -56,7 +56,7 @@ The engine supports two base options controlled by the `ARGS` variable:
 ### a) Generate Initial Conditions (`--generate`)
 
 * Creates a CSV file with initial conditions based on predefined functions in `iniconds.jl`.
-* All constants and parameters (e.g., gas temperature) can be adjusted **only** inside `iniconds.jl`.
+* All constants and parameters (e.g., gas temperature) can be adjusted setting **kwargs** (although there are default values for every parameter inside `iniconds.jl`).
 * This design keeps the CLI arguments simple and clean.
 
 ### b) Run Simulations (`--run`)
@@ -76,7 +76,7 @@ ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere"]
 include("sph_manager.jl")
 ```
 
-* This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`).
+* This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`) with default parameters.
 
 ---
 
@@ -97,7 +97,7 @@ include("sph_manager.jl")
 
 ## Notes
 
-* Modify any physical parameters or constants only in `iniconds.jl` to maintain consistency.
+* When setting kwargs, in `iniconds.jl` user input and default values are merged to ensure generation of initial conditions.
 * The CLI interface (`ARGS`) keeps terminal commands concise.
 * Refer to comments inside `iniconds.jl` and `sph_manager.jl` for detailed customization options.
 
