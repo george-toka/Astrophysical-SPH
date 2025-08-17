@@ -26,15 +26,31 @@ julia
 julia> cd("julia_version/fastv1_kd&single_oc")
 ```
 
-### 4. Load the ArgParse Package and Set Arguments
+### 4. Install required dependencies
 
 ```bash
-julia> using ArgParse
+julia> dependencies = ["Random", "LinearAlgebra", "Statistics", "DifferentialEquations", "Interpolations", "QuadGK", "FFTW", "ArgParse", "GLMakie", "Mmap", "NearestNeighbors", "DataStructures", "CSV", "DataFrames", "DelimitedFiles"]
+julia> import Pkg;
+jullia> Pkg.add(dependencies)
 ```
 
 Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
 
+### 5. Load the ArgParse Package and Set Arguments
 
+```bash
+julia> using ArgParse
+ARGS = [...] # Below is shown, how to set ARGS properly
+```
+
+Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
+
+### 6. Execution
+
+After setting up your environment and assigning your ARGS with all needed arguments, run the `sph_manager.jl` file.
+```bash
+julia> include("sph_manager.jl") 
+```
 
 ## Available Modes
 
@@ -43,7 +59,7 @@ The engine supports two base options controlled by the `ARGS` variable:
 ### a) Generate Initial Conditions (`--generate`)
 
 * Creates a CSV file with initial conditions based on predefined functions in `iniconds.jl`.
-* All constants and parameters (e.g., gas temperature) can be adjusted **only** inside `iniconds.jl`.
+* All constants and parameters (e.g., gas temperature) can be adjusted setting **kwargs** (although there are default values for every parameter inside `iniconds.jl`).
 * This design keeps the CLI arguments simple and clean.
 
 ### b) Run Simulations (`--run`)
@@ -59,11 +75,14 @@ The engine supports two base options controlled by the `ARGS` variable:
 ### Example 1: Generate Initial Conditions for Gaussian Sphere with Polytropic EOS
 
 ```julia
-ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere"]
-include("sph_manager.jl")
+ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere"] # Without custom parameters
+ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere", "--kwargs", "N=5000,R=5.38552341e16,axis=[1 0 0],Ω_frac=0.25"] # With custom parameters
 ```
 
-* This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`).
+* This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`) with default parameters.
+
+### IMPORTANT
+When defining kwargs you should strictly stick all parameters next to each other with no spaces in between
 
 ---
 
@@ -71,7 +90,6 @@ include("sph_manager.jl")
 
 ```julia
 ARGS = ["--run", "--EOS", "polytropic", "--ic-type", "gaussian_sphere", "1", "5", "true", "false"]
-include("sph_manager.jl")
 ```
 
 * This starts a polytropic simulation using snapshot ID `1`.
@@ -80,15 +98,11 @@ include("sph_manager.jl")
 * The `false` flag disables saving of PNG plots.
   The last three parameters are not mandatory to be set by the user, because they have their default values
 
-### 5. Execution
-
-After setting up your environment and assigning your ARGS with all needed arguments, run the sph_manager.jl file.
-
 ---
 
 ## Notes
 
-* Modify any physical parameters or constants only in `iniconds.jl` to maintain consistency.
+* When setting kwargs, in `iniconds.jl` user input and default values are merged to ensure generation of initial conditions.
 * The CLI interface (`ARGS`) keeps terminal commands concise.
 * Refer to comments inside `iniconds.jl` and `sph_manager.jl` for detailed customization options.
 
