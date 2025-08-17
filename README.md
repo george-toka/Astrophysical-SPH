@@ -79,10 +79,10 @@ ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere"] # W
 ARGS = ["--generate", "--EOS", "polytropic", "--ic-type", "gaussian_sphere", "--kwargs", "N=5000,R=5.38552341e16,axis=[1 0 0],Ω_frac=0.25"] # With custom parameters
 ```
 
+* This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`) with default parameters.
+
 ### IMPORTANT
 When defining kwargs you should strictly stick all parameters next to each other with no spaces in between
-
-* This generates `1snap.csv` inside the folder named after the IC type (`gaussian_sphere`) with default parameters.
 
 ---
 
