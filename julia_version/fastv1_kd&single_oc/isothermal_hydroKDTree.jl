@@ -1,6 +1,6 @@
 module HJL
 
-    using NearestNeighbors
+    using NearestNeighbors, Logging
 
     function W(h::Vector{Float64}, q::Matrix{Float64}, masks::BitArray{3})
         #= 
