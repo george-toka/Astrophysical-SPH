@@ -30,6 +30,12 @@ function parse_command_line()
                     rotating_cloud, polytropic_sphere, gaussian_sphere"
             arg_type = String
             required = true
+        
+        "--kwargs"
+            help = "Extra keyword arguments for initial conditions, in format key1=val1,key2=val2"
+            arg_type = String
+            required = false
+            default = ""
 
         "--snapID"
             help = "Snapshot number to use for cold/warm start"
@@ -64,13 +70,40 @@ function main()
     
     if args["generate"]
         println("Generating $(args["EOS"]) initial conditions for the test case of : $(args["ic_type"])")
-        INICONDS.iniconds_setup(args["EOS"], args["ic_type"])  
+
+        # parse kwargs string into Dict
+        kwargs_dict = Dict{Symbol, Any}()
+
+        if !isempty(args["kwargs"])
+            for kv in split(args["kwargs"], ",")
+                k, v = split(kv, "=")
+  
+                # convert to Bool if "true"/"false"
+                v_lower = lowercase(v)
+                if v_lower == "true"
+                    v_parsed = true
+                elseif v_lower == "false"
+                    v_parsed = false
+                else
+                    # try parsing Int first, then Float, else keep string
+                    parsed_int = tryparse(Int, v)
+                    parsed_float = tryparse(Float64, v)
+                    v_parsed = parsed_int !== nothing ? parsed_int :
+                            parsed_float !== nothing ? parsed_float :
+                            v
+                end
+
+                kwargs_dict[Symbol(k)] = v_parsed
+            end
+        end
+
+        INICONDS.iniconds_setup(args["EOS"], args["ic_type"]; kwargs_dict...)  
     end
 
     if args["run"]
         if args["EOS"] == "isothermal"
             println("Running $(args["EOS"]) simulation from snapshot $(args["snapID"]) with IC type: $(args["ic_type"])")
-            isothermalSim.run_simulation(args["snapID"], args["ic_type"], args["plotInterval"], args["keepSnaps"], args["showPlots"])  
+            isothermalSim.run_simulation(args["snapID"], args["ic_type"], args["snapInterval"], args["keepSnaps"], args["showPlots"])  
         
         elseif args["EOS"] == "polytropic"
             println("Running $(args["EOS"]) simulation from snapshot $(args["snapID"]) with IC type: $(args["ic_type"])")

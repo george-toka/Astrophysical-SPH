@@ -415,7 +415,7 @@ module INICONDS
     end
 
 
-    function gaussian_sphere(N::Int, R::Float64; axis::Vector{Float64} = nothing, Ω_frac::Float64 = 0.0, rng = nothing)
+    function gaussian_sphere(N::Int, R::Float64; axis::Union{Vector{Float64}, Nothing} = nothing, Ω_frac::Float64 = 0.0, rng = nothing)
         #=
         gaussian_sphere(N; axis = nothing, omega = 0.0, seed = nothing)
 
@@ -454,164 +454,164 @@ module INICONDS
     end
 
 
-    function iniconds_setup(EOS::String, ic_type::String)
-        #=
-            EOS: Can either be "isothermal" or "polytropic"
-            ic_type: Can take any name of the above initial conditions functions
-        =#
+    function iniconds_setup(EOS::String, ic_type::String; kwargs...)
 
-        # ====== Initial conditions Setup in CGS Units =========
+        # ================ CGS Units ================
 
+        R0 = 5.38552341e16 # pc in [cm]
+        M0 = 1.9891e33 # Solar mass in [g]
 
-        M0 = 1.9891e33 # [g] solar mass in grams
-        pc = 5.38552341e16	   # [cm] parsec in cm
+        # Default parameters
+        defaults = Dict(
+            :N => 10000,
+            :R => 2.0 * R0,    
+            :Kh => 50,
+            :Kgr => 20,
+            :t => 0,
+            :tEnd => 5e12,
+            :alpha => 1.0,
+            :beta => 2.0,
+            :G => 6.67430e-8,        # Gravitational constant [cm^3 g^-1 s^-2]
+            :theta => 0.576,
+            :M => 1 * M0,
+            :rho_c => 150.0,
+            :ξ_max => 7.5,
+            :Ω_frac => 0.5,
+            :gamma => 5/3,
+            :mu => 0.61,
+            :T => 15_000_000,
+            :a => 0.01,                    # Plummer
+            :velocity_mode => :virial,     # Bonnor-Ebert
+            :mach_number => 1.0,
+            :alpha_vir => 1.0,
+            :rng => MersenneTwister(42),
+            :spectrum => "burgers",        # Turbulent cloud
+            :add_turbulence => false,      # Rotating cloud
+            :turb_frac => 0.1,
+            :n => 3.0,                      # Polytropic
+            :axis => nothing
+        )
 
-        # Common Simulation parameters
-        N         = 10000      # Number of particles
-        R         = 2.0 * pc
-        Kh		  = 50         # Number of neighbors for hydro_end
-        Kgr       = 20		   # Bucket size for gravity Octree
-        t         = 0          # current time of the simulation
-        tEnd      = 5e12       # time at which simulation ends
-        alpha     = 1.0        # constant to handle bulk viscocity
-        beta      = 2.0        # constant to handle particle interpenetration
-        theta     = 0.576      # Opening angle for BH Tree
-        M = 1 * M0             # in case Mtot is not provided from the above initial conditions' functions
-        rho_c =  150.0         # Central Density [g/cm^3]
-        ξ_max =  7.5           # Dimensionless truncation radius   
-        Ω_frac = 0.5           # Angular Velocity
-
+        # Merge user kwargs with defaults
+        params = merge(defaults, Dict(kwargs))
+       
         # Physical constants (in CGS units) 
-        G = 6.67430e-8        # Gravitational constant [cm^3 g^-1 s^-2]
         kB = 1.380649e-16     # Boltzmann constant [erg K^-1]
         mH = 1.6735575e-24    # Mass of hydrogen atom [g]
 
+        # Derived quantities
+        cs = sqrt(kB * params[:T] / (params[:mu] * mH))  # Isothermal sound speed [cm/s]
+        m = params[:M] / params[:N]
 
-        # Gas properties 
-        gamma = 5/3           # Ideal monoatomic gas
-        mu = 0.61             # Mean molecular weight for molecular cloud (H2 + He)
-        T = 15_000_000                # Temperature [K]
-        cs = sqrt(kB * T / (mu * mH))  # Isothermal sound speed [cm/s]
-        m = M / N
-
-        # Other initial conditions needed for the functions
-
-        # Plummer sphere 
-        a = 0.01 # smoothing factor
-
-        # Bonnor Ebert sphere 
-        velocity_mode = :virial              # :virial or :mach or :none
-        mach_number = 1.0                    
-        alpha_vir = 1.0                       
-        rng = MersenneTwister(42)
-
-
-        # Turbulent Molecular Cloud
-        spectrum = "burgers"                 # 'burgers' or anything else
-
-        # Rotating Cloud
-        add_turbulence = false
-        turb_frac = 0.1
-
-        # Polytropic Sphere
-        n = 3.0 ; gamma = 1 + 1/n           
-        if n==3.0
-            β = 0.9995
-            αλφα = 4 * (5.670e-5) / 29979245800
-            K = (kB / (mH * mu))^(4/3) * (3*(1-β)/(αλφα*β^4))^(1/3) # from eddington model
-        else
-            K = kB * T / (mu * mH * rho_c^(1/n)) # For other polytropes
+        # Helper to check required arguments
+        function check_args(required)
+            missing = filter(arg -> !haskey(params, arg), required)
+            if !isempty(missing)
+                error("Missing required arguments for $ic_type: $(missing)")
+            end
         end
 
-        # Gaussian sphere
-        axis = nothing
-        
-        # Get initial distribution
+        # Dispatch to IC functions
         if ic_type == "sample_isothermal_sphere"
-            pos, vel = sample_isothermal_sphere(N, R, cs)
+            check_args([:N, :R, :cs])
+            pos, vel = sample_isothermal_sphere(params[:N], params[:R], cs)
+
         elseif ic_type == "sample_plummer_sphere"
-            pos, vel = sample_plummer_sphere(N, M, a)
+            check_args([:N, :M, :a])
+            pos, vel = sample_plummer_sphere(params[:N], params[:M], params[:a])
+
         elseif ic_type == "bonnor_ebert_sphere"
-            pos, vel = bonnor_ebert_sphere(N, cs, rho_c, ξ_max; velocity_mode, mach_number, alpha_vir, rng)
+            check_args([:N, :cs, :rho_c, :ξ_max, :velocity_mode, :mach_number, :alpha_vir, :rng])
+            pos, vel = bonnor_ebert_sphere(
+                params[:N], cs, params[:rho_c], params[:ξ_max];
+                velocity_mode=params[:velocity_mode],
+                mach_number=params[:mach_number],
+                alpha_vir=params[:alpha_vir],
+                rng=params[:rng]
+            )
+
         elseif ic_type == "turbulent_molecular_cloud"
-            pos, vel, rho_vec = turbulent_molecular_cloud(N, R, M, spectrum, cs, rng)
-            # Find K for given cs and central density
-            K = cs^2 / gamma * rho_vec.^(1-gamma)
+            check_args([:N, :R, :M, :spectrum, :cs, :rng])
+            pos, vel, rho_vec = turbulent_molecular_cloud(params[:N], params[:R], params[:M], params[:spectrum], cs, params[:rng])
+            K = cs^2 / params[:gamma] * rho_vec.^(1-params[:gamma])
+
         elseif ic_type == "rotating_cloud"
-            pos, vel = rotating_cloud(N; Mtot=M, Rcloud=R, rho_c, Ω_frac, add_turbulence, turb_frac)
-            # Find K for given cs and central density
-            K = fill(kB * T / (mu * mH * rho_c^(gamma-1)), N)  # Polytropic constant vector [erg⋅cm⁶/g²]
+            check_args([:N, :M, :R, :rho_c, :Ω_frac, :add_turbulence, :turb_frac])
+            pos, vel = rotating_cloud(
+                params[:N]; 
+                Mtot=params[:M], 
+                Rcloud=params[:R], 
+                rho_c=params[:rho_c], 
+                Ω_frac=params[:Ω_frac], 
+                add_turbulence=params[:add_turbulence], 
+                turb_frac=params[:turb_frac]
+            )
+            K = fill(kB * params[:T] / (params[:mu] * mH * params[:rho_c]^(params[:gamma]-1)), params[:N])
+
         elseif ic_type == "polytropic_sphere"
-            pos, vel, M = polytropic_sphere(N, n, K, rho_c, ξ_max)
-            K = fill(K, N)
-            m = M / N
+            check_args([:N, :n, :K, :rho_c, :ξ_max])
+            pos, vel, M_actual = polytropic_sphere(params[:N], params[:n], params[:K], params[:rho_c], params[:ξ_max])
+            K = fill(params[:K], params[:N])
+            m = M_actual / params[:N]
+            params[:M] = M_actual
+
         elseif ic_type == "gaussian_sphere"
-            pos, vel = gaussian_sphere(N, R; axis, Ω_frac, rng)
-            # Find K from central density in this distribution
+            check_args([:N, :R, :axis, :Ω_frac, :rng])
+            pos, vel = gaussian_sphere(params[:N], params[:R]; axis=params[:axis], Ω_frac=params[:Ω_frac], rng=params[:rng])
             r_com = sum(pos, dims=1) / size(pos, 1)
-            r_com_vec = vec(r_com)  # Convert 1×3 to plain 3-element vector
-            rho0 = HJL.density_plot(m, r_com, pos, Kh); rho0 = rho0[1]
-            K = fill(kB * T / (mu * mH * rho0^(gamma-1)), N)  # Polytropic constant vector [erg⋅cm⁶/g²]
+            rho0 = HJL.density_plot(m, r_com, pos, params[:Kh])[1]
+            K = fill(kB * params[:T] / (params[:mu] * mH * rho0^(params[:gamma]-1)), params[:N])
 
         else
-            println("The ic_type you provided is invalid. Please check all available options")
-            exit()
+            error("Invalid ic_type: $ic_type")
         end
 
-        # Compute radius of distribution
+        # Compute radius
         r_com = sum(pos, dims=1) / size(pos, 1)
-        r_com_vec = vec(r_com)  # Convert 1×3 to plain 3-element vector
-        R = maximum([norm(pos[i, :] .- r_com_vec) for i in 1:N])
+        R_max = maximum([norm(pos[i, :] .- vec(r_com)) for i in 1:params[:N]])
 
+        # Save snapshot depending on EOS
         if EOS == "isothermal"
-            U = cs^2/(gamma-1) * M # Internal energy [erg] / constant in isothermal processes
-
             constants = Dict(
                 "iterID" => 1, # Used for snaps and statistics book-keeping
-                "N" => N, 
-                "Kh" => Kh,
-                "Kgr" => Kgr,
-                "t" => t,
-                "tEnd" => tEnd,
-                "M" => M,
-                "R" => R,
-                "alpha" => alpha,
-                "beta" => beta,
-                "G" => G,
-                "theta" => theta,
+                "N" => params[:N], 
+                "Kh" => params[:Kh],
+                "Kgr" => params[:Kgr],
+                "t" => params[:t],
+                "tEnd" => params[:tEnd],
+                "M" => params[:M],
+                "R" => R_max,
+                "alpha" => params[:alpha],
+                "beta" => params[:beta],
+                "G" => params[:G],
+                "theta" => params[:theta],
                 "m" => m,
                 "cs" => cs,
                 "U" => U
             )
-
-            SnapshotRW.write_snapshot(string(1), ic_type, pos, vel; constants=constants)
-            println("Initial conditions for an isothermal $(ic_type) of an ideal gas, have been produced.")
-
+            SnapshotRW.write_snapshot("1", ic_type, pos, vel; constants=constants)
+            println("Initial conditions for an isothermal $ic_type have been produced.")
         elseif EOS == "polytropic"
-            
-
             constants = Dict(
                 "iterID" => 1, # Used for snaps and statistics book-keeping
-                "N" => N, 
-                "Kh" => Kh,
-                "Kgr" => Kgr,
-                "t" => t,
-                "tEnd" => tEnd,
-                "M" => M,
-                "R" => R,
-                "alpha" => alpha,
-                "beta" => beta,
-                "G" => G,
-                "theta" => theta,
+                "N" => params[:N], 
+                "Kh" => params[:Kh],
+                "Kgr" => params[:Kgr],
+                "t" => params[:t],
+                "tEnd" => params[:tEnd],
+                "M" => params[:M],
+                "R" => R_max,
+                "alpha" => params[:alpha],
+                "beta" => params[:beta],
+                "G" => params[:G],
+                "theta" => params[:theta],
                 "m" => m,
-                "gamma" => gamma
+                "gamma" => params[:gamma]
             )
-
-            SnapshotRW.write_snapshot(string(1), ic_type, pos, vel; K, constants=constants)
-            println("Initial conditions for a polytropic $(ic_type) of an ideal gas, have been produced.")
-
-        else 
-            println("No EOS of type $(EOS) exists. Available options are either: 'isothermal' or 'polytropic'")
+            SnapshotRW.write_snapshot("1", ic_type, pos, vel; K=K, constants=constants)
+            println("Initial conditions for a polytropic $ic_type have been produced.")
+        else
+            error("Invalid EOS: $EOS. Available options: 'isothermal' or 'polytropic'")
         end
     end
 
