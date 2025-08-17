@@ -36,7 +36,20 @@ jullia> Pkg.add(dependencies)
 
 Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
 
-### 5. Load the ArgParse Package and Set Arguments
+### 5. Create folders for snapshots
+Create in the current directory a folder named `snapshots`. Then inside, create folders that have the same name as the initial condition functions
+so that the engine saves the initial condition files and the simulation snapshots automatically to each corresponding folder. The 7 folders must be named:
+* gaussian_sphere
+* polytropic_sphere
+* rotating_cloud
+* sample_isothermal_sphere
+* sample_plummer_sphere
+* turbulent_molecular_cloud
+* bonnor_ebert_sphere
+
+Then inside each folder create two folders, one named `bin` and one named `graphs`.
+
+### 6. Load the ArgParse Package and Set Arguments
 
 ```bash
 julia> using ArgParse
@@ -45,7 +58,7 @@ ARGS = [...] # Below is shown, how to set ARGS properly
 
 Inside the Julia REPL, you will configure the arguments (`ARGS` variable) to control your workflow.
 
-### 6. Execution
+### 7. Execution
 
 After setting up your environment and assigning your ARGS with all needed arguments, run the `sph_manager.jl` file.
 ```bash
