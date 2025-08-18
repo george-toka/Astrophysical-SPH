@@ -102,7 +102,7 @@ When defining kwargs you should strictly stick all parameters next to each other
 ### Example 2: Run Simulation Using the Above Initial Conditions
 
 ```julia
-ARGS = ["--run", "--EOS", "polytropic", "--ic-type", "gaussian_sphere", "1", "5", "true", "false"]
+ARGS = ["--run", "--EOS", "polytropic", "--ic_type", "gaussian_sphere", "--snapID", "1", "--snapInterval", "5", "--keepSnaps", "true", "--showPlots", "false"]
 ```
 
 * This starts a polytropic simulation using snapshot ID `1`.
