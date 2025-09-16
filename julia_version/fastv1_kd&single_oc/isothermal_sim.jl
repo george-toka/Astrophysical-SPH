@@ -215,7 +215,7 @@ module isothermalSim
 			# ------- Plotting -------
 			if keepSnaps * intervalCounter == snapInterval || t >= tEnd
 				# Important features for snapshots (and density plot)
-				rr[:, 1] = rlin .- rcom_x 	# samples lie on the x-axis
+				rr[:, 1] = rlin .+ rcom_x 	# samples lie on the x-axis
 				rr[:, 2:3] .= r_com[:, 2:3]
 				rho_radial = HJL.density_plot(m, rr, pos, Kh)
 
