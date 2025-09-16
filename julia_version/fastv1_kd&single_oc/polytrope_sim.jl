@@ -236,7 +236,7 @@ module polytropeSim
 			if keepSnaps * intervalCounter == snapInterval || t >= tEnd
 				
 				# Use r_com to sample radial density profile starting from the true center
-				rr[:, 1] = rlin .- rcom_x 	# samples lie on the x-axis
+				rr[:, 1] = rlin .+ rcom_x 	# samples lie on the x-axis
 				rr[:, 2:3] .= r_com[:, 2:3]
 				rho_radial = HJL.density_plot(m, rr, pos, Kh)
 				R = find_star_radius(rlin, rho_radial; threshold=0.01*rho_radial[1])
