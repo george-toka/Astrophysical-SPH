@@ -134,8 +134,8 @@ module isothermalSim
 		# Prep figure for conservation checks
 		fig2 = Figure(size=(500, 500))
 		nrg_plot = Axis(fig2[1,1], xlabel="Time", ylabel="Energy")
-		l_plot = Axis(fig2[2,1], xlabel="Time", ylabel="L Mom")
-		p_plot = Axis(fig2[3,1], xlabel="Time", ylabel="Ang Mom")
+		p_plot = Axis(fig2[2,1], xlabel="Time", ylabel="L Mom")
+		l_plot = Axis(fig2[3,1], xlabel="Time", ylabel="Ang Mom")
 
 		# Create GUI panes
 		screen1 = display(GLMakie.Screen(), fig1)
