@@ -46,6 +46,7 @@ so that the engine saves the initial condition files and the simulation snapshot
 * sample_plummer_sphere
 * turbulent_molecular_cloud
 * bonnor_ebert_sphere
+* boss_bodenheimer
 
 Then inside each folder create two folders, one named `bin` and one named `graphs`.
 
