@@ -486,6 +486,10 @@ module INICONDS
             positions[i,3] = z   # z unchanged
         end
 
+        # --- Center the cloud ---
+        r_com = mean(positions, dims=1)
+        positions .-= r_com
+    
         # --- Solid-body rotation about z-axis ---
         I = 0.4 * M_cloud * R_cloud^2   # moment of inertia (uniform sphere)
         Egrav = -3/5 * G * M_cloud^2 / R_cloud
@@ -499,6 +503,8 @@ module INICONDS
             velocities[i,2] =  Ω * x
             velocities[i,3] =  0.0
         end
+    
+        velocities .-= mean(velocities, dims=1)
 
         return positions, velocities, fill(ρ_cloud, N)
     end
