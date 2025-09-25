@@ -475,6 +475,12 @@ module INICONDS
             end
         end
 
+
+        # --- Center the cloud ---
+        r_com = mean(positions, dims=1)
+        positions .-= r_com
+
+    
         # --- Apply m=2 density perturbation in xy-plane ---
         for i in 1:N
             x, y, z = positions[i,:]
@@ -485,10 +491,6 @@ module INICONDS
             positions[i,2] = r_xy * sin(φ) * perturb
             positions[i,3] = z   # z unchanged
         end
-
-        # --- Center the cloud ---
-        r_com = mean(positions, dims=1)
-        positions .-= r_com
     
         # --- Solid-body rotation about z-axis ---
         I = 0.4 * M_cloud * R_cloud^2   # moment of inertia (uniform sphere)
