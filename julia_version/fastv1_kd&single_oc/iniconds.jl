@@ -456,6 +456,7 @@ module INICONDS
 
     function boss_bodenheimer(N::Int, R_cloud::Float64, M_cloud::Float64; 
                         A::Float64=0.1, β::Float64=0.26, rng=nothing)
+                        
         if rng !== nothing
             Random.seed!(rng)
         end
@@ -468,44 +469,56 @@ module INICONDS
         for i in 1:N
             while true
                 x = 2R_cloud * (rand(3) .- 0.5)
-                if norm(x) ≤ R_cloud
+                if norm(x) <= R_cloud
                     positions[i,:] .= x
                     break
                 end
             end
         end
 
-
-        # --- Center the cloud ---
+        # --- Center COM ---
         r_com = mean(positions, dims=1)
         positions .-= r_com
 
-    
-        # --- Apply m=2 density perturbation in xy-plane ---
+        # --- Apply Boss m=2 azimuthal perturbation ---
+        function phi_star(phi, A; tol=1e-12, maxiter=50)
+            φs = phi  # initial guess
+            for _ in 1:maxiter
+                f  = (φs + A*sin(2*φs))/2 - phi
+                fp = (1 + 2*A*cos(2*φs))/2
+                φs_new = φs - f/fp
+                if abs(φs_new - φs) < tol
+                    return φs_new
+                end
+                φs = φs_new
+            end
+            return φs
+        end
+
         for i in 1:N
             x, y, z = positions[i,:]
             φ = atan(y, x)
             r_xy = sqrt(x^2 + y^2)
-            perturb = 1 + A * cos(2φ)
-            positions[i,1] = r_xy * cos(φ) * perturb
-            positions[i,2] = r_xy * sin(φ) * perturb
-            positions[i,3] = z   # z unchanged
+            φs = phi_star(φ, A)
+            positions[i,1] = r_xy * cos(φs)
+            positions[i,2] = r_xy * sin(φs)
+            positions[i,3] = z
         end
-    
+
         # --- Solid-body rotation about z-axis ---
-        I = 0.4 * M_cloud * R_cloud^2   # moment of inertia (uniform sphere)
+        I = 0.4 * M_cloud * R_cloud^2   # uniform sphere moment of inertia
         Egrav = -3/5 * G * M_cloud^2 / R_cloud
         Erot = β * abs(Egrav)
-        Ω = sqrt(2Erot / I)
+        Ω = sqrt(2 * Erot / I)
 
         velocities = zeros(N,3)
         for i in 1:N
             x, y, z = positions[i,:]
             velocities[i,1] = -Ω * y
             velocities[i,2] =  Ω * x
-            velocities[i,3] =  0.0
+            velocities[i,3] = 0.0
         end
-    
+
         velocities .-= mean(velocities, dims=1)
 
         return positions, velocities, fill(ρ_cloud, N)
