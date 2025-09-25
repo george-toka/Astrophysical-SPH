@@ -27,7 +27,7 @@ function parse_command_line()
         "--ic_type"
             help = "Type of initial condition. Available options: sample_isothermal_sphere, 
                     sample_plummer_sphere, bonnor_ebert_sphere, turbulent_molecular_cloud, 
-                    rotating_cloud, polytropic_sphere, gaussian_sphere"
+                    rotating_cloud, polytropic_sphere, gaussian_sphere, boss_bodenheimer"
             arg_type = String
             required = true
         
