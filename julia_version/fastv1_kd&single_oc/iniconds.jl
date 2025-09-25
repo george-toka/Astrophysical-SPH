@@ -454,6 +454,56 @@ module INICONDS
     end
 
 
+    function boss_bodenheimer(N::Int, R_cloud::Float64, M_cloud::Float64; 
+                        A::Float64=0.1, β::Float64=0.26, rng=nothing)
+        if rng !== nothing
+            Random.seed!(rng)
+        end
+
+        G = 6.67430e-8
+        ρ_cloud = M_cloud / ((4/3) * π * R_cloud^3)
+
+        # --- Sample N particles in a uniform 3D sphere ---
+        positions = zeros(N,3)
+        for i in 1:N
+            while true
+                x = 2R_cloud * (rand(3) .- 0.5)
+                if norm(x) ≤ R_cloud
+                    positions[i,:] .= x
+                    break
+                end
+            end
+        end
+
+        # --- Apply m=2 density perturbation in xy-plane ---
+        for i in 1:N
+            x, y, z = positions[i,:]
+            φ = atan(y, x)
+            r_xy = sqrt(x^2 + y^2)
+            perturb = 1 + A * cos(2φ)
+            positions[i,1] = r_xy * cos(φ) * perturb
+            positions[i,2] = r_xy * sin(φ) * perturb
+            positions[i,3] = z   # z unchanged
+        end
+
+        # --- Solid-body rotation about z-axis ---
+        I = 0.4 * M_cloud * R_cloud^2   # moment of inertia (uniform sphere)
+        Egrav = -3/5 * G * M_cloud^2 / R_cloud
+        Erot = β * abs(Egrav)
+        Ω = sqrt(2Erot / I)
+
+        velocities = zeros(N,3)
+        for i in 1:N
+            x, y, z = positions[i,:]
+            velocities[i,1] = -Ω * y
+            velocities[i,2] =  Ω * x
+            velocities[i,3] =  0.0
+        end
+
+        return positions, velocities, fill(ρ_cloud, N)
+    end
+
+
     function iniconds_setup(EOS::String, ic_type::String; kwargs...)
 
         # ================ CGS Units ================
@@ -489,7 +539,9 @@ module INICONDS
             :add_turbulence => false,      # Rotating cloud
             :turb_frac => 0.1,
             :n => 3.0,                      # Polytropic
-            :axis => nothing
+            :axis => nothing,
+            :β => 0.26,
+            :A => 0.1
         )
 
         # Merge user kwargs with defaults
@@ -502,6 +554,8 @@ module INICONDS
         # Derived quantities
         cs = sqrt(kB * params[:T] / (params[:mu] * mH))  # Isothermal sound speed [cm/s]
         m = params[:M] / params[:N]
+        U = 3/2 * params[:M] * cs^2 
+
 
         # Helper to check required arguments
         function check_args(required)
@@ -561,6 +615,11 @@ module INICONDS
             r_com = sum(pos, dims=1) / size(pos, 1)
             rho0 = HJL.density_plot(m, r_com, pos, params[:Kh])[1]
             K = fill(kB * params[:T] / (params[:mu] * mH * rho0^(params[:gamma]-1)), params[:N])
+
+        elseif ic_type == "boss_bodenheimer"
+            check_args([:N, :R, :M, :A, :β, :rng])
+            pos, vel, rho = boss_bodenheimer(params[:N], params[:R], params[:M]; A=params[:A], β=params[:β], rng=params[:rng])
+            K = fill(kB * params[:T] / (params[:mu] * mH * rho[1]^(params[:gamma]-1)), params[:N])
 
         else
             error("Invalid ic_type: $ic_type")
