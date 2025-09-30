@@ -103,7 +103,7 @@ function main()
     if args["run"]
         if args["EOS"] == "isothermal"
             println("Running $(args["EOS"]) simulation from snapshot $(args["snapID"]) with IC type: $(args["ic_type"])")
-            isothermalSim.run_simulation(args["snapID"], args["ic_type"], args["snapInterval"], args["keepSnaps"], args["showPlots"])  
+            isothermalSim.run_simulation(args["ic_type"], args["snapID"], args["snapInterval"], args["keepSnaps"], args["showPlots"])  
         
         elseif args["EOS"] == "polytropic"
             println("Running $(args["EOS"]) simulation from snapshot $(args["snapID"]) with IC type: $(args["ic_type"])")
