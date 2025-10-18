@@ -4,6 +4,8 @@
 Welcome to the **Astrophysical SPH Simulation Engine**!  
 This engine allows you to generate initial conditions and run astrophysical Smoothed Particle Hydrodynamics (SPH) simulations through a simple Command Line Interface (CLI)-like experience using Julia’s `ArgParse` package.
 
+Small Snippet of Simulation Runs: https://youtu.be/xk_S9nfnBDw
+
 ---
 
 ## Getting Started
